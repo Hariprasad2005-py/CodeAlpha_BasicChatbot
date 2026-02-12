@@ -1,28 +1,547 @@
-def chatbot():
-    print("Hello, I am a simple chatbot. Type 'bye' to exit.")
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Chatbot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    responses = {
-        "hi": "Hello, I am a chatbot. How can I help you?",
-        "how are you?": "I am fine, what about you?",
-        "what is your name?": "I am a simple chatbot.",
-        "who created you?": "I am being created by simple python code.",
-        "bye": "Bye, have a nice day ahead!"
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f8cdda, #c2e9fb, #7f00ff);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            transition: 0.3s;
+            animation: fadePage 1s ease-in-out;
+        }
+
+        @keyframes fadePage {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: transform 0.8s cubic-bezier(.68,-0.55,.27,1.55), opacity 0.8s ease;
+        }
+
+        .chat-header {
+            background: #075E54;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 10px 15px;
+            border-radius: 20px;
+            max-width: 70%;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .user {
+            background: #dcf8c6;
+            align-self: flex-end;
+        }
+
+        .bot {
+            background: #f1f0f0;
+            align-self: flex-start;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ccc;
+            background: #fff;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            outline: none;
+        }
+
+        button {
+            margin-left: 10px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            background: #075E54;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #128C7E;
+        }
+
+        .typing {
+            font-size: 12px;
+            color: gray;
+            margin-left: 10px;
+        }
+
+        .dark-mode {
+            background: #121212;
+        }
+
+        .dark-mode .chat-container {
+            background: #1e1e1e;
+        }
+
+        .dark-mode .chat-box {
+            background: #1e1e1e;
+        }
+
+        .dark-mode .user {
+            background: #005c4b;
+            color: white;
+        }
+
+        .dark-mode .bot {
+            background: #333;
+            color: white;
+        }
+
+        .toggle {
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        @keyframes fadeIn {
+            from {opacity: 0; transform: translateY(10px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+
+        .welcome-screen {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff9a9e, #a18cd1, #667eea);
+            background-size: 200% 200%;
+            animation: gradientMove 8s ease infinite;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 9999;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="welcomeScreen" class="welcome-screen">
+    <h1 id="welcomeTitle"></h1>
+</div>
+
+<div class="chat-container">
+    <div class="chat-header">
+        Smart Chatbot
+        <span class="toggle" onclick="toggleMode()">🌙</span>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="message bot">Hello 👋 I'm your smart chatbot!</div>
+    </div>
+
+    <div class="typing" id="typing"></div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<!-- Sounds -->
+<audio id="welcomeSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/2608/2608-preview.mp3" type="audio/mpeg">
+</audio>
+
+<!-- WHOOSH SOUND -->
+<audio id="whooshSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/1114/1114-preview.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+
+const dataset = [
+
+    // Greetings
+    {
+        keywords: ["hi", "hello", "hey", "hii"],
+        replies: [
+            "Heyy 👋 It's nice to see you here!",
+            "Hello there 😄 How’s your day going?",
+            "Hey! What’s up?",
+            "Hi hi 😊 What’s on your mind?"
+        ]
+    },
+
+    {
+        keywords: ["good morning"],
+        replies: [
+            "Good morning ☀️ Hope you slept well!",
+            "Morning! Ready to conquer the day? 💪",
+            "Good morning 😊 What’s the plan today?"
+        ]
+    },
+  {
+        keywords: ["good night"],
+        replies: [
+            "Good night 😴 Sweet dreams!",
+            "Sleep well! See you tomorrow! 🌙",
+            "Night night! Rest up and recharge!"
+        ]
+    },
+      {
+        keywords: ["good afternoon"],
+        replies: [
+            "Good afternoon ☀️ Hope you're having a great day!",
+            "Afternoon! Ready to tackle the rest of your day? 💪",
+            "Good afternoon 😊 How's your day going?"
+        ]
+    },
+      {
+        keywords: ["good evening"],
+        replies: [
+            "Good evening 🌙 Hope you had a great day!",
+            "Evening! Ready to wind down?",
+            "Good evening 😊 How was your day?"
+        ]
+    },
+    {
+        keywords: ["how are you"],
+        replies: [
+            "I'm doing pretty good! How about you? 😊",
+            "All good here! What about your side?",
+            "I’m great 😄 Tell me how you're feeling today?"
+        ]
+    },
+
+    {
+        keywords: ["i am sad", "sad", "feeling low"],
+        replies: [
+            "I'm really sorry you're feeling that way 💙",
+            "That sounds tough… Want to talk about it?",
+            "I'm here for you. What happened?"
+        ]
+    },
+
+    {
+        keywords: ["i am happy","happy", "feeling good"],
+        replies: [
+            "That’s amazing 😄 What made your day?",
+            "I love hearing that! Tell me more!",
+            "Happiness looks good on you 😎"
+        ]
+    },
+
+    // Daily life
+    {
+        keywords: ["what are you doing"],
+        replies: [
+            "Just talking to you 😌",
+            "Waiting for interesting conversations!",
+            "Chilling in the code world 😎"
+        ]
+    },
+
+    {
+        keywords: ["bored"],
+        replies: [
+            "Bored? Want a joke? 😏",
+            "Let’s fix that boredom!",
+            "Tell me something random!"
+        ]
+    },
+
+    // Study & Career
+    {
+        keywords: ["exam"],
+        replies: [
+            "Exams can be stressful 😬 You prepared well?",
+            "You’ll do great! Just stay calm.",
+            "Which subject is troubling you?"
+        ]
+    },
+
+    {
+        keywords: ["job"],
+        replies: [
+            "Working life or job hunting?",
+            "What field are you in?",
+            "Jobs can be challenging but rewarding!"
+        ]
+    },
+
+    // Programming
+    {
+        keywords: ["html"],
+        replies: [
+            "HTML builds the structure of websites.",
+            "Without HTML, no web page exists 😄",
+            "HTML is the backbone of frontend."
+        ]
+    },
+
+    {
+        keywords: ["css"],
+        replies: [
+            "CSS makes everything beautiful 🎨",
+            "Styling is power!",
+            "Good CSS can make simple sites look premium."
+        ]
+    },
+
+    {
+        keywords: ["javascript"],
+        replies: [
+            "JavaScript makes websites interactive ⚡",
+            "JS is everywhere nowadays!",
+            "Frontend without JS feels incomplete."
+        ]
+    },
+
+    {
+        keywords: ["python"],
+        replies: [
+            "Python is beginner-friendly 🐍",
+            "Python is powerful for AI and backend.",
+            "I love Python simplicity!"
+        ]
+    },
+
+    // Fun
+    {
+        keywords: ["joke"],
+        replies: [
+            "Why don’t programmers like nature? Too many bugs 😂",
+            "Why did the developer go broke? Because he used up all his cache 😆",
+            "Why was the computer cold? It forgot to close Windows!"
+        ]
+    },
+
+    {
+        keywords: ["fun fact"],
+        replies: [
+            "Honey never spoils 🍯",
+            "Bananas are berries, but strawberries aren’t 🤯",
+            "Octopuses have three hearts!"
+        ]
+    },
+
+    // Motivation
+    {
+        keywords: ["motivate me"],
+        replies: [
+            "You’re stronger than you think 💪",
+            "Small progress is still progress.",
+            "Don’t quit now. Future you will thank you."
+        ]
+    },
+
+    {
+        keywords: ["i failed"],
+        replies: [
+            "Failure teaches more than success.",
+            "This is not the end.",
+            "Every expert was once a beginner."
+        ]
+    },
+
+    // Love & Relationship
+    {
+        keywords: ["love"],
+        replies: [
+            "Love makes life beautiful ❤️",
+            "Are we talking romantic love or self-love?",
+            "Love is powerful and complicated 😅"
+        ]
+    },
+
+    {
+        keywords: ["breakup"],
+        replies: [
+            "Breakups hurt 💔 but healing happens.",
+            "Time heals things slowly.",
+            "Want to talk about it?"
+        ]
+    },
+    // Entertainment
+    {
+        keywords: ["movie"],
+        replies: [
+            "What genre do you like?",
+            "Movies are perfect stress relief 🎬",
+            "Any recent favorite?"
+        ]
+    },
+    {
+        keywords: ["music"],
+        replies: [
+            "Music heals the soul 🎵",
+            "What are you listening to these days?",
+            "I love all genres 😄"
+        ]
+    },
+    // Goodbye
+    {
+        keywords: ["bye", "goodbye"],
+        replies: [
+            "It was nice talking to you 😊",
+            "Take care! Come back soon!",
+            "See you later 👋"
+        ]
+    },
+    // Thanks
+    {
+        keywords: ["thanks", "thank you"],
+        replies: [
+            "Always here for you 🙌",
+            "No problem at all!",
+            "Anytime 😄"
+        ]
     }
+];
+function sendMessage() {
 
-    while True:
-        user_input = input("You: ").lower()
+    const input = document.getElementById("userInput");
+    const chatBox = document.getElementById("chatBox");
+    const typing = document.getElementById("typing");
 
-        if user_input == "bye":
-            print(f"Bot: {responses['bye']}")
-            break
-        
-        
-        reply = responses.get(user_input)
+    const message = input.value.trim().toLowerCase();
+    if (message === "") return;
 
-        if reply:
-            print(f"Bot: {reply}")
-        else:
-            print("Bot: I don't understand, please try again.")
+    // 💨 PLAY WHOOSH SOUND
+// PLAY WHOOSH SOUND (short controlled version)
+const whoosh = document.getElementById("whooshSound");
+whoosh.currentTime = 0;
+whoosh.volume = 0.5;
+whoosh.play().catch(()=>{});
 
-if __name__ == "__main__":
-    chatbot()
+setTimeout(() => {
+    whoosh.pause();
+    whoosh.currentTime = 0;
+}, 700); // stops after 0.7 seconds
+
+
+    chatBox.innerHTML += `<div class="message user">${message}</div>`;
+    input.value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    typing.innerText = "Bot is typing...";
+
+    setTimeout(() => {
+        typing.innerText = "";
+        let reply = getReply(message);
+        chatBox.innerHTML += `<div class="message bot">${reply}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 1000);
+}
+
+function getReply(message) {
+    for (let item of dataset) {
+        for (let keyword of item.keywords) {
+            if (message.includes(keyword)) {
+                return item.replies[Math.floor(Math.random() * item.replies.length)];
+            }
+        }
+    }
+    return "Interesting 🤔 Tell me more!";
+}
+
+function toggleMode() {
+    document.body.classList.toggle("dark-mode");
+}
+
+document.getElementById("userInput")
+.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") sendMessage();
+});
+
+window.addEventListener("load", function() {
+
+    const sound = document.getElementById("welcomeSound");
+    sound.volume = 0.4;
+
+    const text = "🎉 Welcome to Smart Chatbot 🎉";
+    const title = document.getElementById("welcomeTitle");
+    const chat = document.querySelector(".chat-container");
+
+    let i = 0;
+    function typeEffect() {
+        if (i < text.length) {
+            title.innerHTML += text.charAt(i);
+            i++;
+            setTimeout(typeEffect, 50);
+        }
+    }
+    typeEffect();
+
+    var duration = 2000;
+    var end = Date.now() + duration;
+
+    (function frame() {
+        if (!window.soundPlayed) {
+            sound.play().catch(()=>{});
+            window.soundPlayed = true;
+        }
+
+        confetti({
+            particleCount: 30,
+            spread: 120,
+            origin: { y: 0.6 }
+        });
+
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    })();
+
+    setTimeout(() => {
+        document.getElementById("welcomeScreen").style.display = "none";
+        chat.style.transform = "translateX(0)";
+        chat.style.opacity = "1";
+    }, 2500);
+});
+
+</script>
+
+</body>
+</html>
